@@ -1,10 +1,28 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { signInWithGoogle } from '../services/supabase';
 
 interface LoginViewProps {
-  onLogin: () => void;
+  onLoginSuccess: () => void;
 }
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
+  const [loading, setLoading] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleLogin = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await signInWithGoogle();
+      onLoginSuccess();
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(err.message || 'Authentication failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="animate-fade-in" style={{
       padding: '24px',
@@ -46,11 +64,29 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         color: 'var(--text-secondary)',
         fontSize: '13px',
         textAlign: 'center',
-        marginBottom: '32px',
+        marginBottom: '24px',
         padding: '0 20px'
       }}>
         Refine, score, and optimize your prompts for ChatGPT, Claude, and Gemini in one click.
       </p>
+
+      {/* Error Message Panel */}
+      {errorMsg && (
+        <div style={{
+          background: 'rgba(239, 68, 68, 0.1)',
+          color: 'var(--color-danger)',
+          border: '1px solid rgba(239, 68, 68, 0.2)',
+          borderRadius: '8px',
+          padding: '8px 12px',
+          fontSize: '11px',
+          width: '100%',
+          marginBottom: '14px',
+          textAlign: 'center',
+          boxSizing: 'border-box'
+        }}>
+          {errorMsg}
+        </div>
+      )}
 
       {/* Login Card */}
       <div className="glass-panel" style={{
@@ -74,30 +110,43 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLogin }) => {
         </div>
 
         <button 
-          onClick={onLogin}
+          onClick={handleLogin}
+          disabled={loading}
           className="gradient-btn" 
           style={{
             width: '100%',
             padding: '12px 16px',
             fontSize: '14px',
-            marginTop: '10px'
+            marginTop: '10px',
+            cursor: loading ? 'wait' : 'pointer',
+            opacity: loading ? 0.8 : 1
           }}
         >
-          {/* Mock Google Logo using inline styles & letters */}
-          <span style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '18px',
-            height: '18px',
-            borderRadius: '50%',
-            background: 'white',
-            color: '#4285F4',
-            fontSize: '11px',
-            fontWeight: 'bold',
-            marginRight: '6px'
-          }}>G</span>
-          Sign in with Google
+          {loading ? (
+            <>
+              <svg className="animate-spin" style={{ width: '16px', height: '16px', marginRight: '6px' }} viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" />
+              </svg>
+              Connecting...
+            </>
+          ) : (
+            <>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '18px',
+                height: '18px',
+                borderRadius: '50%',
+                background: 'white',
+                color: '#4285F4',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                marginRight: '6px'
+              }}>G</span>
+              Sign in with Google
+            </>
+          )}
         </button>
       </div>
 

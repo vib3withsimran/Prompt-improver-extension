@@ -4,20 +4,42 @@ import { LoginView } from './login/LoginView';
 import { PopupView } from './popup/PopupView';
 import { HistoryView, type HistoryItem } from './history/HistoryView';
 import { SettingsView } from './settings/SettingsView';
+import { supabase, signOut } from './services/supabase';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [authLoading, setAuthLoading] = useState<boolean>(true);
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<string>('optimize');
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
-  // Load state and history on mount
+  // Monitor auth state changes and initial session
   useEffect(() => {
-    // Check localStorage for mock auth state and history
-    const storedAuth = localStorage.getItem('mock_auth');
-    if (storedAuth === 'true') {
-      setIsAuthenticated(true);
-    }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setAuthLoading(false);
+    });
 
+    // Subscribe to auth events
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setUser(session.user);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+      setAuthLoading(false);
+    });
+
+    // Load local history log
     const storedHistory = localStorage.getItem('prompt_history');
     if (storedHistory) {
       try {
@@ -26,7 +48,6 @@ function App() {
         console.error('Failed to parse history', e);
       }
     } else {
-      // Mock history placeholder
       const initialHistory: HistoryItem[] = [
         {
           id: '1',
@@ -35,30 +56,27 @@ function App() {
           improved: 'Subject: Scheduling a Brief Discussion / Career Development Review\n\nDear [Manager Name],\n\nI hope you are having a productive week. I am writing to request a brief meeting to review my recent contributions and discuss my career development and compensation alignment at [Company Name]. Over the past [Timeframe], I have successfully led [Project/Metric], which resulted in [Outcome].\n\nI look forward to discussing how I can continue to drive success for the team. Please let me know your availability next week.\n\nBest regards,\n[Your Name]',
           score: 91,
           model: 'GPT-4o'
-        },
-        {
-          id: '2',
-          timestamp: '2 hours ago',
-          original: 'make a landing page copy',
-          improved: '# Head: Transforming Ideas into High-Converting Interfaces\n\n## Subhead:\nCreate stunning, premium landing pages that build trust and convert visitors into loyal customers in minutes. No coding required.\n\n## Key Value Props:\n- **Glassmorphic components**: State-of-the-art interactive visual fidelity.\n- **Lightning Fast**: Blazing loading speeds optimized for conversion SEO.\n- **Dynamic layouts**: Adapts instantly to phone, tablet, or desktop views.',
-          score: 84,
-          model: 'Claude 3.5'
         }
       ];
       setHistory(initialHistory);
       localStorage.setItem('prompt_history', JSON.stringify(initialHistory));
     }
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogin = () => {
-    setIsAuthenticated(true);
-    localStorage.setItem('mock_auth', 'true');
-  };
-
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    localStorage.setItem('mock_auth', 'false');
-    setActiveTab('optimize');
+  const handleLogout = async () => {
+    try {
+      setAuthLoading(true);
+      await signOut();
+      setActiveTab('optimize');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setAuthLoading(false);
+    }
   };
 
   const handleAddHistory = (original: string, improved: string, score: number, model: string) => {
@@ -80,10 +98,27 @@ function App() {
     localStorage.removeItem('prompt_history');
   };
 
-  // Render view depending on authentication and active tab
   const renderContent = () => {
+    if (authLoading) {
+      return (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          gap: '12px'
+        }}>
+          <svg className="animate-spin" style={{ width: '28px', height: '28px', color: 'var(--primary-purple)' }} viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="32" strokeLinecap="round" />
+          </svg>
+          <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>Securing connection...</span>
+        </div>
+      );
+    }
+
     if (!isAuthenticated) {
-      return <LoginView onLogin={handleLogin} />;
+      return <LoginView onLoginSuccess={() => setIsAuthenticated(true)} />;
     }
 
     switch (activeTab) {
@@ -92,7 +127,11 @@ function App() {
       case 'history':
         return <HistoryView history={history} onClearHistory={handleClearHistory} />;
       case 'settings':
-        return <SettingsView onLogout={handleLogout} />;
+        return <SettingsView 
+          onLogout={handleLogout} 
+          userEmail={user?.email || 'user@example.com'} 
+          userName={user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Authenticated User'}
+        />;
       default:
         return <PopupView onAddHistory={handleAddHistory} />;
     }
@@ -100,13 +139,11 @@ function App() {
 
   return (
     <>
-      {/* Content wrapper */}
       <div style={{ flex: 1, height: '100%', position: 'relative', overflow: 'hidden' }}>
         {renderContent()}
       </div>
 
-      {/* Navigation Footer */}
-      {isAuthenticated && (
+      {isAuthenticated && !authLoading && (
         <nav className="bottom-nav">
           <button
             onClick={() => setActiveTab('optimize')}
