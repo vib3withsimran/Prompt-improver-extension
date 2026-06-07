@@ -45,7 +45,7 @@ extension/
 
 ---
 
-## 🎓 Recruiter & Interview Questions Prep
+## 🎓 Key Points related to Extension Development
 
 Here are the key technical concepts and architectural decisions that interviewers will ask you about this project:
 
