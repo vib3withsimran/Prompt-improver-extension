@@ -3,13 +3,21 @@ import { LogOut, Key, Shield, HelpCircle, Eye, EyeOff } from 'lucide-react';
 
 interface SettingsViewProps {
   onLogout: () => void;
+  userEmail: string;
+  userName: string;
 }
 
-export const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
+export const SettingsView: React.FC<SettingsViewProps> = ({ onLogout, userEmail, userName }) => {
   const [apiKey, setApiKey] = useState<string>('sk-proj-••••••••••••••••3aB8');
   const [showKey, setShowKey] = useState<boolean>(false);
   const [autoInject, setAutoInject] = useState<boolean>(true);
   const [analyticsEnabled, setAnalyticsEnabled] = useState<boolean>(false);
+
+  // Get user initials for avatar
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  };
 
   return (
     <div className="animate-fade-in" style={{
@@ -44,11 +52,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLogout }) => {
             fontWeight: 'bold',
             color: 'white'
           }}>
-            SG
+            {getInitials(userName)}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>Simran Gupta</span>
-            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>simran@example.com</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: 'white' }}>{userName}</span>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>{userEmail}</span>
           </div>
         </div>
         <button

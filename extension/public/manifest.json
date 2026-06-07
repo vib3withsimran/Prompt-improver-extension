@@ -5,7 +5,8 @@
   "description": "Optimize, score, template, and manage your AI prompts dynamically.",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "identity"
   ],
   "action": {
     "default_popup": "index.html",
